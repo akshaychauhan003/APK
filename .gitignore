@@ -35,3 +35,6 @@ student_resource/dataset/
 .tox/
 .coverage
 htmlcov/
+
+#zip
+6ab10eb3b23ba_student_resource.zip

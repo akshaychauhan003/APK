@@ -38,12 +38,17 @@ MATCHING_HEADER = [GROUND_TRUTH_S1_COL, GROUND_TRUTH_MATCHED_COL]
 CANDIDATE_HEADER = [GROUND_TRUTH_S1_COL, "candidate_entity_ids"]
 
 # Blocking Parameters
-BLOCKING_TOP_K = 15
+BLOCKING_TOP_K = 15           # TF-IDF nearest neighbors per S1 entity
 MIN_BLOCKING_SIMILARITY = 0.25
+
+# Training Scale Control
+# Real dataset has 2.2M S1 rows. Training on all rows at once is infeasible
+# on a single machine. Use a sample for iteration; set to None to use all data.
+TRAIN_SAMPLE_SIZE = 50_000    # ~50k S1 entities → ~750k candidate pairs (manageable)
 
 # Model & Evaluation Parameters
 F_BETA = 0.5
-# IMPORTANT: F_0.5 weights precision 2x over recall.
+# IMPORTANT: F_0.5 weights precision 2x more than recall.
 # Use a HIGH threshold (0.85-0.95) so the model only says "Match"
 # when it is very confident. False merges are catastrophic.
 CLASSIFICATION_THRESHOLD = 0.90
