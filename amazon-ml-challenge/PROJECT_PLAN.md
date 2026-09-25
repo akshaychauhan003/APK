@@ -101,17 +101,20 @@ Priority: LightGBM → XGBoost → HistGradientBoostingClassifier → GradientBo
 
 ### 🔄 Phase 4: Final Packaging (IN PROGRESS)
 
-- [x] `package_submission.py` created — one-command zip builder with validation
-- [x] `Documentation_template.md` fully filled with methodology
-- [x] `README.md` updated with real dataset sizes and all commands
-- [x] Pipeline running with 5k sample — S2 + S3 preprocessing complete (10M rows vectorized)
-- [x] Fuzzy blocking upgraded: memory-safe (200k cap per country, 50k vocab, batched kNN)
-- [x] Training upgraded: vectorized label creation, class-weight imbalance handling
+**Critical fixes applied after server restart:**
+- [x] `exact_blocking.py` — **rewritten with pandas merge** (was itertuples loop, 1000× faster on 10M rows)
+- [x] `train_pipeline.py` — **S2+S3 sub-sampled per country** (300k cap) before preprocessing, eliminates 9-min bottleneck
+- [x] `candidate_generation.py` — 2M pair safety cap + better logging
+- [x] `main.py` — handles `(model, metrics)` tuple return from training
+- [x] Pipeline restarted (task-253) with corrected code
+
+**Remaining to complete:**
 - [ ] **Await pipeline completion** → review `output/matching_results.tsv`
 - [ ] Run `python3 utils/validate_submission.py` — verify PASS
 - [ ] Record actual F_0.5 validation score in `Documentation_template.md`
 - [ ] Rerun with `--sample-size 50000` for submission-quality model
-- [ ] Run `python3 package_submission.py --team-name "YourTeamName"` → create zip
+- [ ] Run `python3 package_submission.py --team-name "YourTeamName"` → create final zip
+- [ ] Commit all changes to git
 
 ---
 

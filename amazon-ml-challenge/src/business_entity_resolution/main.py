@@ -72,7 +72,16 @@ def main():
             logger.info(f"  Training on a SAMPLE of {sample_size:,} S1 entities.")
         else:
             logger.info("  Training on the FULL dataset (this may take a long time).")
-        run_training_pipeline(val_split=args.val_split, sample_size=sample_size)
+        result = run_training_pipeline(val_split=args.val_split, sample_size=sample_size)
+        if isinstance(result, tuple):
+            model, metrics = result
+            if metrics:
+                logger.info(
+                    f"  Final Validation → "
+                    f"P={metrics.get('macro_precision', 0):.4f}  "
+                    f"R={metrics.get('macro_recall', 0):.4f}  "
+                    f"F0.5={metrics.get('macro_f0.5', 0):.4f}"
+                )
 
     if args.mode in ["predict", "all"]:
         logger.info("Executing inference pipeline...")
