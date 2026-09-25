@@ -31,26 +31,56 @@ logger = logging.getLogger(__name__)
 CAND_SAMPLE_PER_COUNTRY = 300_000   # Max S2+S3 records per country for training
 
 
-def _preprocess_candidates_sampled(df_s2: pd.DataFrame, df_s3: pd.DataFrame,
-                                   sample_per_country: int) -> pd.DataFrame:
+def _preprocess_candidates_sampled(
+    df_s2: pd.DataFrame,
+    df_s3: pd.DataFrame,
+    df_gt: pd.DataFrame,
+    sample_per_country: int,
+) -> pd.DataFrame:
     """
-    For training: sample S2+S3 candidates by country to bound preprocessing time.
-    Returns a preprocessed combined candidate DataFrame.
+    For training: build a candidate pool that ALWAYS includes the true-match
+    S2/S3 entities from ground truth, plus random negatives up to sample_per_country.
+
+    Without this, sampling S2/S3 randomly almost never hits the true matches,
+    giving a useless 1800:1 negative imbalance.
     """
-    logger.info("  Sub-sampling S2+S3 by country for training...")
+    from ..config import COUNTRY_COL, ENTITY_ID_COL, GROUND_TRUTH_MATCHED_COL
+
+    # Collect all S2/S3 IDs that are true matches for any sampled S1
+    true_match_ids: set = set()
+    for _, row in df_gt.iterrows():
+        matched_str = str(row.get(GROUND_TRUTH_MATCHED_COL, "")).strip()
+        if matched_str and matched_str.lower() not in ("nan", ""):
+            for cid in matched_str.split(","):
+                cid = cid.strip()
+                if cid:
+                    true_match_ids.add(cid)
+
+    logger.info(f"  Positive-aware sampling: {len(true_match_ids):,} true-match candidate IDs to guarantee inclusion")
+
     combined = pd.concat([df_s2, df_s3], ignore_index=True)
 
-    from ..config import COUNTRY_COL
-    sampled_parts = []
-    for country, grp in combined.groupby(COUNTRY_COL):
-        if len(grp) > sample_per_country:
-            grp = grp.sample(n=sample_per_country, random_state=42)
-            logger.info(f"    [{country}]: sampled {sample_per_country:,} from {len(combined[combined[COUNTRY_COL]==country]):,}")
-        sampled_parts.append(grp)
+    # Always include all true-match records
+    positives = combined[combined[ENTITY_ID_COL].isin(true_match_ids)]
+
+    # Fill remaining slots per country from negatives
+    negatives = combined[~combined[ENTITY_ID_COL].isin(true_match_ids)]
+    sampled_parts = [positives]
+
+    pos_per_country = positives.groupby(COUNTRY_COL)[ENTITY_ID_COL].count().to_dict()
+    for country, grp in negatives.groupby(COUNTRY_COL):
+        already_pos = pos_per_country.get(country, 0)
+        remaining = max(0, sample_per_country - already_pos)
+        if remaining > 0:
+            sampled_parts.append(grp.sample(n=min(remaining, len(grp)), random_state=42))
 
     sampled = pd.concat(sampled_parts, ignore_index=True)
-    logger.info(f"  Candidate sample size: {len(sampled):,} records → preprocessing...")
+    logger.info(
+        f"  Candidate pool: {len(positives):,} positives + "
+        f"{len(sampled) - len(positives):,} negatives = {len(sampled):,} total → preprocessing..."
+    )
     return preprocess_dataset(sampled)
+
 
 
 def run_training_pipeline(val_split: float = 0.20, sample_size: int = TRAIN_SAMPLE_SIZE):
@@ -74,8 +104,8 @@ def run_training_pipeline(val_split: float = 0.20, sample_size: int = TRAIN_SAMP
     logger.info("2. Preprocessing S1 entities...")
     df_s1_clean = preprocess_dataset(df_s1)
 
-    logger.info("2b. Preprocessing candidate pool (S2+S3 sampled by country for training)...")
-    df_cand_clean = _preprocess_candidates_sampled(df_s2, df_s3, CAND_SAMPLE_PER_COUNTRY)
+    logger.info("2b. Preprocessing candidate pool (S2+S3 — positive-aware sampling)...")
+    df_cand_clean = _preprocess_candidates_sampled(df_s2, df_s3, df_gt, CAND_SAMPLE_PER_COUNTRY)
     logger.info(f"   Candidate pool ready: {len(df_cand_clean):,} records")
 
     # Train/val split
