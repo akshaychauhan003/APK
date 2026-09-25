@@ -1,61 +1,47 @@
-"""
-Evaluation metric utilities calculating precision, recall, and Macro F0.5 score.
-"""
-
-from typing import Dict, Set
-import pandas as pd
-from ..config import GROUND_TRUTH_S1_COL, GROUND_TRUTH_MATCHED_COL, F_BETA
+from ..config import S1_ID_COL, MATCHED_COL, F_BETA
 
 
-def calculate_f_beta(precision: float, recall: float, beta: float = F_BETA) -> float:
-    """Calculate F-beta score given precision and recall."""
-    if precision == 0 and recall == 0:
-        return 0.0
-    beta_sq = beta ** 2
-    numerator = (1 + beta_sq) * precision * recall
-    denominator = (beta_sq * precision) + recall
-    return numerator / denominator if denominator > 0 else 0.0
+def f_beta(precision: float, recall: float, beta: float = F_BETA) -> float:
+    b2 = beta ** 2
+    denom = b2 * precision + recall
+    return (1 + b2) * precision * recall / denom if denom > 0 else 0.0
 
 
-def evaluate_predictions(df_pred: pd.DataFrame, df_gt: pd.DataFrame) -> Dict[str, float]:
-    """Calculate macro precision, recall, and F0.5 score comparing predictions against ground truth."""
-    pred_map: Dict[str, Set[str]] = {}
-    for _, row in df_pred.iterrows():
-        s1_id = row[GROUND_TRUTH_S1_COL]
-        matched = set(row[GROUND_TRUTH_MATCHED_COL].split(",")) if row[GROUND_TRUTH_MATCHED_COL] else set()
-        pred_map[s1_id] = matched
+def evaluate(df_pred, df_gt) -> dict:
+    """Compute macro precision, recall, F_0.5 comparing predictions to ground truth.
+    
+    Handles singletons: correctly predicting no-match scores 1.0 per the challenge spec.
+    """
+    def parse(s):
+        s = str(s).strip()
+        return set(s.split(",")) if s and s.lower() != "nan" else set()
 
-    gt_map: Dict[str, Set[str]] = {}
-    for _, row in df_gt.iterrows():
-        s1_id = row[GROUND_TRUTH_S1_COL]
-        matched = set(row[GROUND_TRUTH_MATCHED_COL].split(",")) if row[GROUND_TRUTH_MATCHED_COL] else set()
-        gt_map[s1_id] = matched
+    # build lookup dicts without iterrows — use pandas indexing
+    pred_map = df_pred.set_index(S1_ID_COL)[MATCHED_COL].apply(parse).to_dict()
+    gt_map   = df_gt.set_index(S1_ID_COL)[MATCHED_COL].apply(parse).to_dict()
 
-    precisions = []
-    recalls = []
-    f_scores = []
+    precs, recs, f05s = [], [], []
+    for s1_id, actual in gt_map.items():
+        pred = pred_map.get(s1_id, set())
+        tp = len(pred & actual)
 
-    for s1_id, actual_set in gt_map.items():
-        pred_set = pred_map.get(s1_id, set())
+        if not pred and not actual:
+            p = r = 1.0
+        elif not pred:
+            p, r = 1.0, 0.0
+        elif not actual:
+            p, r = 0.0, 1.0
+        else:
+            p = tp / len(pred)
+            r = tp / len(actual)
 
-        tp = len(pred_set.intersection(actual_set))
-        fp = len(pred_set - actual_set)
-        fn = len(actual_set - pred_set)
+        precs.append(p)
+        recs.append(r)
+        f05s.append(f_beta(p, r))
 
-        p = tp / (tp + fp) if (tp + fp) > 0 else (1.0 if not actual_set and not pred_set else 0.0)
-        r = tp / (tp + fn) if (tp + fn) > 0 else (1.0 if not actual_set and not pred_set else 0.0)
-        f05 = calculate_f_beta(p, r, beta=F_BETA)
-
-        precisions.append(p)
-        recalls.append(r)
-        f_scores.append(f05)
-
-    macro_precision = sum(precisions) / len(precisions) if precisions else 0.0
-    macro_recall = sum(recalls) / len(recalls) if recalls else 0.0
-    macro_f05 = sum(f_scores) / len(f_scores) if f_scores else 0.0
-
+    n = len(f05s) or 1
     return {
-        "macro_precision": macro_precision,
-        "macro_recall": macro_recall,
-        "macro_f0.5": macro_f05,
+        "macro_precision": sum(precs) / n,
+        "macro_recall":    sum(recs) / n,
+        "macro_f0.5":      sum(f05s) / n,
     }

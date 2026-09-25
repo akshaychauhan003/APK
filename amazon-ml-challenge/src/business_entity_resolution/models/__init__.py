@@ -1,13 +1,3 @@
-"""
-Model definitions, training, and inference utilities.
-"""
-
-from .model import EntityResolutionModel
-from .train import train_matching_model
-from .predict import predict_matches
-
-__all__ = [
-    "EntityResolutionModel",
-    "train_matching_model",
-    "predict_matches",
-]
+from .model import Classifier
+from .train import train, create_labels
+from .predict import predict
