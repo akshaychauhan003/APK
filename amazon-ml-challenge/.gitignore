@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env/
+
+# Trained models — do not commit large binary blobs
+models_saved/
+*.pkl
+*.joblib
+*.pt
+*.pth
+*.bin
+*.onnx
+
+# EDA / intermediate outputs — commit only final submission outputs
+# (manually add output/*.tsv when they are submission-ready)
+notebooks/*.csv
+notebooks/*.json
+notebooks/*.pkl
+
+# Intermediate CSVs, JSON, scratch files
+*.csv
+*.json
+scratch/
+
+# macOS
+.DS_Store
+
+# IDEs
+.vscode/
+.idea/
+*.iml
+
+# Jupyter Notebooks (keep .py EDA scripts instead)
+*.ipynb
+.ipynb_checkpoints/
+
+# Log files
+*.log
+logs/
+
+# Submission zips
+*.zip

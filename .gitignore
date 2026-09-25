@@ -1,0 +1,37 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Mac OS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+
+# Datasets
+amazon-ml-challenge/dataset/
+student_resource/dataset/
+*.csv
+*.tsv
+*.zip
+*.tar.gz
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Caches
+.pytest_cache/
+.mypy_cache/
+.tox/
+.coverage
+htmlcov/
