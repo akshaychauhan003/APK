@@ -1,6 +1,6 @@
 """
 Exact rule-based blocking key generator.
-Fully vectorized using pandas groupby for production-scale datasets (10M+ rows).
+Fully vectorized using pandas merge for production-scale datasets (10M+ rows).
 """
 
 import logging
@@ -10,6 +10,18 @@ import pandas as pd
 from ..config import ENTITY_ID_COL, COUNTRY_COL
 
 logger = logging.getLogger(__name__)
+
+# Generic first words that match so many businesses they're useless as blocking keys.
+# Blocking on "the" or "global" would generate millions of false pairs.
+_NAME_BLOCK_STOPWORDS = {
+    "the", "a", "an", "new", "old", "national", "global", "international",
+    "american", "general", "united", "first", "best", "top", "prime",
+    "great", "good", "super", "mega", "metro", "city", "state", "central",
+    "north", "south", "east", "west", "royal", "golden", "blue", "green",
+    "red", "white", "black", "star", "sun", "sky", "land", "home", "world",
+    "modern", "standard", "professional", "premium", "elite", "alpha",
+    "omega", "apex", "delta", "sigma", "shri", "sri", "m", "s", "r", "k",
+}
 
 
 def _get_first_word_series(s: pd.Series) -> pd.Series:
@@ -40,9 +52,14 @@ def generate_exact_blocks(df_s1: pd.DataFrame, df_candidates: pd.DataFrame) -> S
 
     pairs_list = []
 
-    # ── Key 1: (country, first_word) — merge on name block ────────────────
-    s1_name = s1[s1["first_word"] != ""][["s1_id", "country_lc", "first_word"]]
-    cand_name = cand[cand["first_word"] != ""][["cand_id", "country_lc", "first_word"]]
+    # ── Key 1: (country, first_word) — name block ─────────────────────────
+    # Filter out stopwords to avoid pair explosion on generic names
+    s1_name = s1[
+        (s1["first_word"] != "") & (~s1["first_word"].isin(_NAME_BLOCK_STOPWORDS))
+    ][["s1_id", "country_lc", "first_word"]]
+    cand_name = cand[
+        (cand["first_word"] != "") & (~cand["first_word"].isin(_NAME_BLOCK_STOPWORDS))
+    ][["cand_id", "country_lc", "first_word"]]
     if not s1_name.empty and not cand_name.empty:
         merged_name = s1_name.merge(cand_name, on=["country_lc", "first_word"], how="inner")
         pairs_list.append(merged_name[["s1_id", "cand_id"]])
