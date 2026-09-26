@@ -39,12 +39,12 @@ def generate_tfidf_candidates(
         else:
             log.info(f"  tfidf [{country}]: {len(sub_s1):,} S1 x {len(sub_cand):,} candidates")
 
-        s1_texts   = (sub_s1["clean_name"]   + " " + sub_s1["clean_addr"]).fillna("").values
-        cand_texts = (sub_cand["clean_name"] + " " + sub_cand["clean_addr"]).fillna("").values
+        s1_texts   = (sub_s1["clean_name"]   + " " + sub_s1["clean_addr"] + " " + sub_s1["postal"]).fillna("").values
+        cand_texts = (sub_cand["clean_name"] + " " + sub_cand["clean_addr"] + " " + sub_cand["postal"]).fillna("").values
 
         vec = TfidfVectorizer(
             analyzer="char_wb", ngram_range=(2, 4),
-            min_df=1, max_features=50_000, sublinear_tf=True,
+            min_df=1, max_features=30_000, sublinear_tf=True,
         )
         try:
             cand_mat = vec.fit_transform(cand_texts)

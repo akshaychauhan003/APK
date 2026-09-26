@@ -1,3 +1,3 @@
-from .exact_blocking import generate_exact_blocks
+from .exact_blocking import generate_exact_blocks, precompute_blocking_keys
 from .fuzzy_blocking import generate_tfidf_candidates
 from .candidate_generation import generate_candidates, format_candidate_tsv

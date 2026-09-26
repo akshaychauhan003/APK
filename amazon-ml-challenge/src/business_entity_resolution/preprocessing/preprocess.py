@@ -7,6 +7,7 @@ from ..config import NAME_COL, ADDR_COL
 
 log = logging.getLogger(__name__)
 
+# strip legal suffixes — covers US, Indian, French, German forms
 _LEGAL = re.compile(
     r"\b(corp(?:oration)?|inc(?:orporated)?|ltd|limited|pvt|private"
     r"|llc|llp|co|company|enterprises?|services?|solutions?|group"
@@ -14,6 +15,7 @@ _LEGAL = re.compile(
     re.IGNORECASE,
 )
 
+# common address abbreviations (US + India training data)
 _ABBREVS = [
     (r"\brd\b", "road"),   (r"\bst\b", "street"), (r"\bave\b", "avenue"),
     (r"\bblvd\b", "boulevard"), (r"\bhwy\b", "highway"), (r"\bapt\b", "apartment"),

@@ -50,6 +50,7 @@ def train(
 
     y = create_labels(df_features, df_gt)
 
+    # Use whatever features are available (handles old vs new feature sets)
     avail = [c for c in FEATURE_COLS if c in df_features.columns]
     if missing := set(FEATURE_COLS) - set(avail):
         log.warning(f"  missing feature columns (skipped): {missing}")
@@ -61,6 +62,6 @@ def train(
     log.info(f"  scale_pos_weight = {spw:.1f}")
 
     clf = Classifier(scale_pos_weight=spw)
-    clf.fit(X, y)
+    clf.fit(X, y, feature_names=avail)
     clf.save(save_path)
     return clf

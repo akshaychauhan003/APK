@@ -24,16 +24,17 @@ from ..config import RANDOM_STATE
 
 
 class Classifier:
-    """Thin wrapper that auto-selects the best available GBDT backend."""
+    """Picks best available GBDT: LightGBM > XGBoost > sklearn HistGBM."""
 
     def __init__(self, scale_pos_weight=None):
         spw = scale_pos_weight
 
         if _BACKEND == "lgbm":
             params = dict(
-                n_estimators=300, learning_rate=0.05, max_depth=7,
+                n_estimators=500, learning_rate=0.05, max_depth=7,
                 num_leaves=63, min_child_samples=20,
                 subsample=0.8, colsample_bytree=0.8,
+                reg_alpha=0.1, reg_lambda=1.0,
                 random_state=RANDOM_STATE, verbose=-1, n_jobs=-1,
             )
             if spw is not None:
@@ -42,8 +43,9 @@ class Classifier:
 
         elif _BACKEND == "xgb":
             params = dict(
-                n_estimators=300, learning_rate=0.05, max_depth=7,
+                n_estimators=500, learning_rate=0.05, max_depth=7,
                 subsample=0.8, colsample_bytree=0.8,
+                reg_alpha=0.1, reg_lambda=1.0,
                 random_state=RANDOM_STATE, eval_metric="logloss",
                 verbosity=0, n_jobs=-1,
             )
@@ -54,24 +56,30 @@ class Classifier:
         else:
             cw = {0: 1.0, 1: float(spw)} if spw is not None else None
             self._clf = HistGradientBoostingClassifier(
-                max_iter=300, learning_rate=0.05, max_depth=7,
+                max_iter=500, learning_rate=0.05, max_depth=7,
                 min_samples_leaf=20, class_weight=cw, random_state=RANDOM_STATE,
             )
 
         self.backend = _BACKEND
+        self.feature_names = None
 
-    def fit(self, X, y):
-        log.info(f"training Classifier (backend={self.backend}, shape={X.shape})")
+    def fit(self, X, y, feature_names=None):
+        self.feature_names = feature_names or list(X.columns)
+        log.info(f"training Classifier (backend={self.backend}, shape={X.shape}, features={len(self.feature_names)})")
         self._clf.fit(X, y)
         return self
 
-    def predict_proba(self, X) -> "np.ndarray":
+    def predict_proba(self, X):
         return self._clf.predict_proba(X)[:, 1]
 
     def save(self, path: Path):
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        joblib.dump({"clf": self._clf, "backend": self.backend}, path)
+        joblib.dump({
+            "clf": self._clf,
+            "backend": self.backend,
+            "feature_names": self.feature_names,
+        }, path)
         log.info(f"model saved → {path}")
 
     @classmethod
@@ -81,8 +89,10 @@ class Classifier:
         if isinstance(data, dict):
             obj._clf = data["clf"]
             obj.backend = data.get("backend", "unknown")
+            obj.feature_names = data.get("feature_names", None)
         else:
             obj._clf = data
             obj.backend = "legacy"
-        log.info(f"model loaded from {path} (backend={obj.backend})")
+            obj.feature_names = None
+        log.info(f"model loaded from {path} (backend={obj.backend}, features={obj.feature_names})")
         return obj

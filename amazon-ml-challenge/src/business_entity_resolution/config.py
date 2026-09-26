@@ -31,8 +31,8 @@ CAND_COL    = "candidate_entity_ids"
 F_BETA          = 0.5
 THRESHOLD       = 0.90
 RANDOM_STATE    = 42
-BLOCKING_TOP_K  = 15
-TRAIN_SAMPLE    = 50_000
+BLOCKING_TOP_K  = 25
+TRAIN_SAMPLE    = 100_000
 
 OUTPUT_DIR.mkdir(exist_ok=True)
 MODEL_DIR.mkdir(exist_ok=True)

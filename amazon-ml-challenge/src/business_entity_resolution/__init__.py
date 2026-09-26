@@ -1,2 +1,1 @@
-"""Business Entity Resolution — Amazon ML Challenge 2026"""
-__version__ = "1.0.0"
+# business entity resolution — amazon ml challenge 2026
